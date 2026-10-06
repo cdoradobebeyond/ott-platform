@@ -41,27 +41,19 @@ if (process.env.VITE_SUPABASE_URL && process.env.VITE_SUPABASE_ANON_KEY) {
   await writeFile(join(output, 'src/config.ts'), configSource);
 }
 
-const gradlePath = join(output, 'android/build.gradle');
-try {
-  let gradle = await readFile(gradlePath, 'utf8');
-  const repo = `maven { url 'https://github.com/VdoCipher/maven-repo/raw/master/repo' }`;
-  if (!gradle.includes('github.com/VdoCipher/maven-repo')) {
-    if (/allprojects\s*\{\s*repositories\s*\{/.test(gradle)) {
-      gradle = gradle.replace(/(allprojects\s*\{\s*repositories\s*\{)/, `$1\n        ${repo}`);
-      await writeFile(gradlePath, gradle);
-    } else {
-      const settingsPath = join(output, 'android/settings.gradle');
-      let settings = await readFile(settingsPath, 'utf8');
-      if (!/dependencyResolutionManagement\s*\{[\s\S]*?repositories\s*\{/.test(settings)) {
-        throw new Error('No se encontró un bloque repositories de Gradle para añadir VdoCipher Maven.');
-      }
+if (target === 'android' || target === 'androidtv') {
+  const settingsPath = join(output, 'android/settings.gradle');
+  let settings = await readFile(settingsPath, 'utf8');
+  const repo = `maven { url = uri('https://github.com/VdoCipher/maven-repo/raw/master/repo') }`;
+  if (!settings.includes('github.com/VdoCipher/maven-repo')) {
+    if (/dependencyResolutionManagement\s*\{[\s\S]*?repositories\s*\{/.test(settings)) {
       settings = settings.replace(/(dependencyResolutionManagement\s*\{[\s\S]*?repositories\s*\{)/,
         `$1\n        ${repo}`);
-      await writeFile(settingsPath, settings);
+    } else {
+      settings += `\n\ndependencyResolutionManagement {\n    repositories {\n        google()\n        mavenCentral()\n        ${repo}\n    }\n}\n`;
     }
+    await writeFile(settingsPath, settings);
   }
-} catch (error) {
-  if (error.code !== 'ENOENT') throw error;
 }
 
 const install = spawnSync('npm', ['install', '--no-audit', '--no-fund'], { cwd: output, stdio: 'inherit' });
