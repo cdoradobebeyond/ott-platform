@@ -56,6 +56,8 @@ if (target === 'android' || target === 'androidtv') {
   }
 }
 
-const install = spawnSync('npm', ['install', '--no-audit', '--no-fund'], { cwd: output, stdio: 'inherit' });
+const installArgs = ['install', '--no-audit', '--no-fund'];
+if (config.tv) installArgs.push('--legacy-peer-deps');
+const install = spawnSync('npm', installArgs, { cwd: output, stdio: 'inherit' });
 if (install.status !== 0) throw new Error(`npm install terminó con ${install.status ?? install.signal}.`);
 console.log(`Proyecto ${target} preparado en ${output}`);
