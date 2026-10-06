@@ -111,7 +111,7 @@ jobs:
         working-directory: ${{ runner.temp }}/umbral-${{ matrix.target }}
         run: >-
           xcodebuild -workspace ios/UmbralAppleTV.xcworkspace
-          -scheme UmbralAppleTV-tvOS
+          -scheme UmbralAppleTV
           -configuration Release
           -sdk appletvsimulator
           -destination 'generic/platform=tvOS Simulator'
