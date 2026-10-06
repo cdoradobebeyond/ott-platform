@@ -49,8 +49,12 @@ if (target === 'android' || target === 'androidtv') {
     if (/dependencyResolutionManagement\s*\{[\s\S]*?repositories\s*\{/.test(settings)) {
       settings = settings.replace(/(dependencyResolutionManagement\s*\{[\s\S]*?repositories\s*\{)/,
         `$1\n        ${repo}`);
+      if (!/repositoriesMode\.set\(RepositoriesMode\.(PREFER_SETTINGS|FAIL_ON_PROJECT_REPOS)\)/.test(settings)) {
+        settings = settings.replace(/(dependencyResolutionManagement\s*\{)/,
+          '$1\n    repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)');
+      }
     } else {
-      settings += `\n\ndependencyResolutionManagement {\n    repositories {\n        google()\n        mavenCentral()\n        ${repo}\n    }\n}\n`;
+      settings += `\n\ndependencyResolutionManagement {\n    repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)\n    repositories {\n        google()\n        mavenCentral()\n        ${repo}\n    }\n}\n`;
     }
     await writeFile(settingsPath, settings);
   }
