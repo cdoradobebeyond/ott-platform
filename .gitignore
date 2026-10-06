@@ -1,0 +1,15 @@
+node_modules/
+dist/
+clients/**/dist/
+.env
+.env.local
+clients/native/.env
+clients/native/generated/
+clients/native/android/.gradle/
+clients/native/android/app/build/
+clients/native/ios/Pods/
+clients/native/ios/build/
+clients/native/ios/DerivedData/
+*.keystore
+*.mobileprovision
+.DS_Store

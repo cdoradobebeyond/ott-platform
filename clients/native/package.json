@@ -1,0 +1,20 @@
+{
+  "name": "umbral-native",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "prepare:android": "node scripts/prepare-native.mjs android",
+    "prepare:ios": "node scripts/prepare-native.mjs ios",
+    "prepare:android-tv": "node scripts/prepare-native.mjs androidtv",
+    "prepare:tvos": "node scripts/prepare-native.mjs tvos"
+  },
+  "dependencies": {
+    "@react-native-async-storage/async-storage": "2.2.0",
+    "@supabase/supabase-js": "2.57.0",
+    "react-native-get-random-values": "2.0.0",
+    "react-native-keychain": "10.0.0",
+    "react-native-url-polyfill": "2.0.0",
+    "vdocipher-rn-bridge": "2.0.1",
+    "uuid": "11.1.0"
+  }
+}

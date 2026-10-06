@@ -1,0 +1,10 @@
+{
+  "id": "tv.umbral.ott",
+  "version": "1.0.0",
+  "vendor": "Umbral",
+  "type": "web",
+  "main": "index.html",
+  "title": "Umbral TV",
+  "resolution": "1920x1080",
+  "transparent": false
+}

@@ -1,0 +1,136 @@
+name: Build OTT clients
+
+on:
+  pull_request:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: clients-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  web:
+    name: Web, LG webOS and Samsung Tizen
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Build web client
+        run: npm run build
+        env:
+          VITE_SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
+      - name: Build LG webOS client
+        run: npm run build:webos
+        env:
+          VITE_SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
+      - name: Build Samsung Tizen client
+        run: npm run build:tizen
+        env:
+          VITE_SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-and-smart-tv
+          path: |
+            dist
+            clients/lg-webos/dist
+            clients/tizen/dist
+
+  native:
+    name: ${{ matrix.target }} native build
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: android
+            runner: ubuntu-latest
+            artifact: apk
+          - target: androidtv
+            runner: ubuntu-latest
+            artifact: apk
+          - target: ios
+            runner: macos-15
+            artifact: ios-simulator
+          - target: tvos
+            runner: macos-15
+            artifact: tvos-simulator
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - if: runner.os == 'Linux'
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - if: runner.os == 'macOS'
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+      - name: Generate native project and install dependencies
+        run: node clients/native/scripts/prepare-native.mjs "${{ matrix.target }}" "$RUNNER_TEMP/umbral-${{ matrix.target }}"
+        env:
+          VITE_SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
+      - name: Install CocoaPods
+        if: runner.os == 'macOS'
+        working-directory: ${{ runner.temp }}/umbral-${{ matrix.target }}
+        run: |
+          bundle install
+          bundle exec pod install --project-directory=ios
+      - name: Build Android APK
+        if: runner.os == 'Linux'
+        working-directory: ${{ runner.temp }}/umbral-${{ matrix.target }}/android
+        run: ./gradlew assembleRelease
+      - name: Build iOS Simulator app
+        if: matrix.target == 'ios'
+        working-directory: ${{ runner.temp }}/umbral-${{ matrix.target }}
+        run: >-
+          xcodebuild -workspace ios/UmbralIOS.xcworkspace
+          -scheme UmbralIOS
+          -configuration Release
+          -sdk iphonesimulator
+          -destination 'generic/platform=iOS Simulator'
+          -derivedDataPath "$RUNNER_TEMP/derived"
+          CODE_SIGNING_ALLOWED=NO
+      - name: Build tvOS Simulator app
+        if: matrix.target == 'tvos'
+        working-directory: ${{ runner.temp }}/umbral-${{ matrix.target }}
+        run: >-
+          xcodebuild -workspace ios/UmbralAppleTV.xcworkspace
+          -scheme UmbralAppleTV-tvOS
+          -configuration Release
+          -sdk appletvsimulator
+          -destination 'generic/platform=tvOS Simulator'
+          -derivedDataPath "$RUNNER_TEMP/derived"
+          CODE_SIGNING_ALLOWED=NO
+      - name: Package Apple simulator app
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          APP_PATH="$(find "$RUNNER_TEMP/derived/Build/Products" -maxdepth 2 -type d -name '*.app' -print -quit)"
+          test -n "$APP_PATH"
+          ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" "$RUNNER_TEMP/${{ matrix.target }}.zip"
+      - if: runner.os == 'Linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.target }}-${{ matrix.artifact }}
+          path: ${{ runner.temp }}/umbral-${{ matrix.target }}/android/app/build/outputs/apk/release/*.apk
+      - if: runner.os == 'macOS'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.target }}-${{ matrix.artifact }}
+          path: ${{ runner.temp }}/${{ matrix.target }}.zip
